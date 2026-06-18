@@ -6,7 +6,7 @@ Built as part of the **Edunet IBM SkillsBuild Internship** program.
 
 ## Live Demo
 
-Deployed link: <>
+Deployed link: https://pre-sense.streamlit.app/
 
 ## Features
 
