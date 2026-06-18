@@ -1,6 +1,6 @@
 # 🛡️ PreSense
 
-PreSense is a Streamlit dashboard for real-time smart-infrastructure risk monitoring. It combines live Open-Meteo weather data, a city-specific RandomForest model, a digital-twin map, telemetry logs, and an optional AI playbook to simulate how a municipal response system could react to changing conditions.
+PreSense is a Streamlit dashboard for real-time smart-infrastructure risk monitoring. It combines live Open-Meteo weather data, a city-specific RandomForest model from Scikit-learn, a digital-twin map, telemetry logs, and an optional AI playbook to simulate how a municipal response system could react to changing conditions.
 
 Built as part of the **Edunet IBM SkillsBuild Internship** program.
 
@@ -11,11 +11,11 @@ Deployed link: https://pre-sense.streamlit.app/
 ## Features
 
 - Live weather lookup by city name using Open-Meteo.
-- City-specific machine learning predictions trained on historical weather observations.
+- City-specific machine learning predictions trained on historical weather observations using RandomForest model.
 - Probability dashboard for normal, flood, heatwave, drought, and snow risk.
 - Digital-twin map with infrastructure assets and state changes.
 - Telemetry and system logs that reflect the current assessment.
-- Optional AI mitigation playbook powered by OpenAI.
+- Optional AI mitigation playbook powered by OpenAI API.
 
 ## Project Structure
 
@@ -46,8 +46,8 @@ project/
 1. Clone the repository.
 
   ```bash
-  git clone https://github.com/Ishaan-Jog/PreSense.git
-  cd PreSense
+  git clone https://github.com/Ishaan-Jog/presense.git
+  cd presense
   ```
 
 2. Create a virtual environment.
@@ -89,7 +89,7 @@ Then open the local URL shown in the terminal, usually `http://localhost:8501`.
 
 ## Notes
 
-- The app can still run without an OpenAI API key. However, you will not get to use the AI playbook feature.
+- The app can still run without an OpenAI API key. However, you will not be able to use the AI playbook feature.
 - The ML model is trained from real historical weather data for the selected city.
 - The probabilities shown in the UI are normalized to five risk classes.
 
