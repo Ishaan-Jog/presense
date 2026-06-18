@@ -4,14 +4,14 @@ app.py
 PreSense – Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System
 
 Entry point: handles Streamlit UI layout and session-state orchestration.
-Business logic lives in the `presense` package:
+Business logic lives in the `modules` package:
 
-    presense/config.py      – page config, CSS, API-key loading
-    presense/data_layer.py  – baseline digital-twin state
-    presense/ml_engine.py   – city-specific RandomForest trained on Open-Meteo history
-    presense/crisis_engine.py – ML-label-driven state mutator
-    presense/map_renderer.py  – Folium map builder
-    presense/ai_playbook.py   – OpenAI streaming generator
+    modules/config.py      – page config, CSS, API-key loading
+    modules/data_layer.py  – baseline digital-twin state
+    modules/ml_engine.py   – city-specific RandomForest trained on Open-Meteo history
+    modules/crisis_engine.py – ML-label-driven state mutator
+    modules/map_renderer.py  – Folium map builder
+    modules/ai_playbook.py   – OpenAI streaming generator
 """
 
 import datetime
