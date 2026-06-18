@@ -25,7 +25,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
-from presense.weather_service import (
+from modules.weather_service import (
     ARCHIVE_URL,
     WeatherServiceError,
     get_open_meteo_json,

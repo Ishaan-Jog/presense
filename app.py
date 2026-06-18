@@ -30,16 +30,16 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-from presense.config      import configure_page, load_api_key
-from presense.ml_engine import (
+from modules.config      import configure_page, load_api_key
+from modules.ml_engine import (
     predict_risk,
     get_feature_importances,
     get_model_summary,
 )
-from presense.crisis_engine import update_city_state_from_ml
-from presense.map_renderer  import build_map
-from presense.ai_playbook   import stream_playbook
-from presense.weather_service import fetch_live_weather, WeatherServiceError
+from modules.crisis_engine import update_city_state_from_ml
+from modules.map_renderer  import build_map
+from modules.ai_playbook   import stream_playbook
+from modules.weather_service import fetch_live_weather, WeatherServiceError
 
 
 _PDF_FONT_REGISTRY_READY = False
