@@ -1,7 +1,7 @@
 """
 app.py
 ------
-GuardianGrid – Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System
+PreSense – Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System
 
 Entry point: handles Streamlit UI layout and session-state orchestration.
 Business logic lives in the `guardian` package:
@@ -30,16 +30,16 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
-from guardian.config      import configure_page, load_api_key
-from guardian.ml_engine import (
+from presense.config      import configure_page, load_api_key
+from presense.ml_engine import (
     predict_risk,
     get_feature_importances,
     get_model_summary,
 )
-from guardian.crisis_engine import update_city_state_from_ml
-from guardian.map_renderer  import build_map
-from guardian.ai_playbook   import stream_playbook
-from guardian.weather_service import fetch_live_weather, WeatherServiceError
+from presense.crisis_engine import update_city_state_from_ml
+from presense.map_renderer  import build_map
+from presense.ai_playbook   import stream_playbook
+from presense.weather_service import fetch_live_weather, WeatherServiceError
 
 
 _PDF_FONT_REGISTRY_READY = False
@@ -204,11 +204,11 @@ def _playbook_without_broadcast(playbook_text: str) -> str:
 
 def _safe_filename(value: str) -> str:
     value = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
-    return value or "GuardianGrid_Playbook"
+    return value or "PreSense_Playbook"
 
 
 def _render_playbook_header(playbook_text: str, risk_tag: str) -> None:
-    export_name = _safe_filename(f"GuardianGrid_{st.session_state.city_name}_{risk_tag}_Playbook")
+    export_name = _safe_filename(f"PreSense_{st.session_state.city_name}_{risk_tag}_Playbook")
     text_bytes = playbook_text.encode("utf-8")
     pdf_bytes = _playbook_to_pdf_bytes(playbook_text)
 
@@ -438,7 +438,7 @@ if st.session_state.weather_error:
 st.markdown(
     '<div class="header-banner">'
     f'<div class="header-tag">{st.session_state.city_name.upper()} • DIGITAL TWIN</div>'
-    '<h1>🛡️ GuardianGrid</h1>'
+    '<h1>🛡️ PreSense</h1>'
     '<p>Real-Time ML Disaster Predictor &amp; AI-based Civil Defense Orchestration System</p>'
     '</div>',
     unsafe_allow_html=True,

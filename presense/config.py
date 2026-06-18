@@ -288,7 +288,7 @@ div[data-testid="stMetricLabel"] > div {
 def configure_page() -> None:
     """Set Streamlit page config and inject global CSS. Call once at startup."""
     st.set_page_config(
-        page_title="GuardianGrid | Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System",
+        page_title="PreSense | Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System",
         page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="expanded",

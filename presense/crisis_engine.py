@@ -14,7 +14,7 @@ update_city_state_from_ml(ml_label: int, ml_probs: list[float])
 """
 
 import datetime
-from guardian.data_layer import get_initial_city_state, relocate_city_state
+from presense.data_layer import get_initial_city_state, relocate_city_state
 
 
 # ── Log helpers ──────────────────────────────────────────────────────────────
