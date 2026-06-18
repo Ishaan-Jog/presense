@@ -6,7 +6,7 @@ Built as part of the **Edunet IBM SkillsBuild Internship** program.
 
 ## Live Demo
 
-Deployed link: https://guardian-grid.streamlit.app/
+Deployed link: (https://guardian-grid.streamlit.app/){target="_blank"}
 
 ## Features
 
