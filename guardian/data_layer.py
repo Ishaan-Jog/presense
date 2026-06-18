@@ -1,8 +1,7 @@
 """
 guardian/data_layer.py
 ----------------------
-Defines the baseline (normal-weather) state for the Pimpri-Chinchwad
-digital twin.  Returns a fresh deep-copy each call so that crisis mutations
+Defines the baseline (normal-weather) state for a digital twin city.  Returns a fresh deep-copy each call so that crisis mutations
 never bleed across simulation runs.
 
 Assets modelled
@@ -14,6 +13,9 @@ Assets modelled
 """
 
 import copy
+
+
+_BASELINE_CENTER = (18.6200, 73.7950)
 
 
 # Baseline city state – edit coordinates / names here to update the twin
@@ -94,3 +96,35 @@ _BASELINE: dict = {
 def get_initial_city_state() -> dict:
     """Return a deep copy of the baseline city state dictionary."""
     return copy.deepcopy(_BASELINE)
+
+
+def relocate_city_state(
+    city_state: dict,
+    latitude: float,
+    longitude: float,
+    city_name: str = "Selected City",
+) -> dict:
+    """
+    Move all mock infrastructure assets around a new city centre while
+    preserving their original relative layout and applying selected-city
+    names to the simulated infrastructure.
+    """
+    lat_offset = latitude - _BASELINE_CENTER[0]
+    lon_offset = longitude - _BASELINE_CENTER[1]
+
+    for asset_group in city_state.values():
+        for asset in asset_group:
+            asset["lat"] = float(asset["lat"]) + lat_offset
+            asset["lon"] = float(asset["lon"]) + lon_offset
+
+    locality = city_name.split(",", 1)[0].strip() or "City"
+    city_state["hospitals"][0]["name"] = f"{locality} Central General Hospital"
+    city_state["hospitals"][1]["name"] = f"{locality} North Medical Center"
+    city_state["power_substations"][0]["name"] = f"{locality} Grid Substation Alpha"
+    city_state["power_substations"][1]["name"] = f"{locality} Grid Substation Beta"
+    city_state["drainage_gates"][0]["id"] = f"{locality} Flood Gate 1"
+    city_state["drainage_gates"][1]["id"] = f"{locality} Flood Gate 2"
+    city_state["emergency_hubs"][0]["name"] = f"{locality} Fire & Rescue Command"
+    city_state["emergency_hubs"][1]["name"] = f"{locality} Ambulance Response Depot"
+
+    return city_state

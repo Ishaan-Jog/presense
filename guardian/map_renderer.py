@@ -59,7 +59,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
         color=_status_color(alpha_crit),
         weight=2.5, opacity=0.6,
         dash_array=_line_dash(alpha_crit),
-        tooltip="Power line: Substation Alpha → YCM Hospital",
+        tooltip=f"Power line: {subs[0]['name']} → {hosps[0]['name']}",
     ).add_to(m)
 
     # Substation Beta → Aditya Birla Hospital
@@ -69,7 +69,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
         color=_status_color(beta_crit),
         weight=2.5, opacity=0.6,
         dash_array=_line_dash(beta_crit),
-        tooltip="Power line: Substation Beta → Aditya Birla Hospital",
+        tooltip=f"Power line: {subs[1]['name']} → {hosps[1]['name']}",
     ).add_to(m)
 
     # Pavana sluice gate interconnect
@@ -78,7 +78,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
         locations=[[gates[0]["lat"], gates[0]["lon"]], [gates[1]["lat"], gates[1]["lon"]]],
         color=_status_color(gate_crit, "#38bdf8"),
         weight=2, opacity=0.4, dash_array="10, 10",
-        tooltip="Pavana River Sluice Automation Interceptor Line",
+        tooltip=f"Flood-control link: {gates[0]['id']} → {gates[1]['id']}",
     ).add_to(m)
 
 
@@ -151,13 +151,17 @@ def _add_emergency_hubs(m: folium.Map, hubs: list) -> None:
 # Public entrypoint
 # ---------------------------------------------------------------------------
 
-def build_map(city_state: dict) -> folium.Map:
+def build_map(
+    city_state: dict,
+    latitude: float = 18.6200,
+    longitude: float = 73.7950,
+) -> folium.Map:
     """
     Build a Folium dark-map centred on Pimpri-Chinchwad and add all
     digital-twin asset layers drawn from *city_state*.
     """
     m = folium.Map(
-        location=[18.6200, 73.7950],
+        location=[latitude, longitude],
         zoom_start=13,
         tiles="CartoDB dark_matter",
         attr="© CartoDB",

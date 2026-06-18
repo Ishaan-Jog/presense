@@ -1,40 +1,28 @@
 """
 guardian/crisis_engine.py
 --------------------------
-Keyword-heuristic crisis parser.  Given a free-text scenario description,
-detects crisis categories (flood, heat, power, accident) and mutates the
-digital twin state accordingly, returning updated state, telemetry log
-entries, and KPI metrics.
+ML-driven crisis state controller.  Takes the Scikit-Learn prediction
+label (0/1/2) and probability scores, then mutates the digital-twin
+state dictionary accordingly, returning updated state, telemetry HTML
+log entries, and KPI metrics.
 
 Public API
 ----------
-update_city_state(scenario_text: str) -> tuple[dict, list[str], dict]
+update_city_state_from_ml(ml_label: int, ml_probs: list[float])
+    -> tuple[dict, list[str], dict]
     Returns (mutated_state, html_log_entries, metrics_dict).
 """
 
 import datetime
-from guardian.data_layer import get_initial_city_state
+from guardian.data_layer import get_initial_city_state, relocate_city_state
 
 
-# Keyword banks per crisis category
-_FLOOD_KEYS    = {"flood", "rain", "storm", "water", "river", "sluice",
-                  "gate", "overflow", "monsoon", "drown", "inundat"}
-_HEAT_KEYS     = {"heat", "hot", "heatwave", "temperature", "summer",
-                  "sun", "drought", "degrees", "48"}
-_POWER_KEYS    = {"power", "blackout", "outage", "grid", "electricity",
-                  "substation", "generator", "load", "offline"}
-_ACCIDENT_KEYS = {"accident", "fire", "blast", "explosion", "leak",
-                  "chemical", "industrial", "earthquake", "quake"}
-
-
-def _detect(text: str, keywords: set[str]) -> bool:
-    return any(k in text for k in keywords)
-
+# ── Log helpers ──────────────────────────────────────────────────────────────
 
 def _log(level: str, timestamp: str, message: str) -> str:
     """Build a styled HTML log entry string."""
     css_class = f"log-level-{level}"
-    label = level.upper()
+    label     = level.upper()
     return (
         f"<div class='log-entry {css_class}'>"
         f"<span class='log-time'>[{timestamp}]</span> "
@@ -52,123 +40,140 @@ def _log_info(timestamp: str, message: str) -> str:
     )
 
 
-# Mutation helpers – each receives the mutable state dict and appends logs
+# ── Crisis mutation helpers ───────────────────────────────────────────────────
+
 def _apply_flood(state: dict, logs: list, ts: str, metrics: dict) -> None:
+    """
+    Label 1 – Flash Flood Risk.
+    Sets drainage gates to critical (95 / 98 %), marks substations at risk.
+    """
     state["drainage_gates"][0].update({
         "water_level_percentage": 95,
-        "status": "CRITICAL OVERFLOW RISK", 
+        "status": "CRITICAL OVERFLOW RISK — Automated Pumps Engaged",
         "status_indicator": "CRITICAL",
     })
     state["drainage_gates"][1].update({
         "water_level_percentage": 98,
-        "status": "CRITICAL OVERFLOW RISK",
+        "status": "CRITICAL OVERFLOW RISK — Backflow Prevention Active",
         "status_indicator": "CRITICAL",
     })
     state["power_substations"][0].update({
         "load_percentage": 88,
-        "status": "High Risk (Basement Flooding Imminent)",
+        "status": "High Risk — Basement Water Logging Imminent",
         "status_indicator": "CRITICAL",
     })
     state["emergency_hubs"][0]["available_units"] = 4
     state["emergency_hubs"][1]["available_units"] = 5
 
-    metrics["grid_load"]        = max(metrics["grid_load"], 79.0)
-    metrics["flood_risk"]       = "CRITICAL"
-    metrics["system_security"]  = "COMPROMISED"
+    metrics["grid_load"]          = max(metrics["grid_load"], 79.0)
+    metrics["flood_risk"]         = "CRITICAL"
+    metrics["system_security"]    = "COMPROMISED"
     metrics["dispatch_available"] = min(metrics["dispatch_available"], 9)
 
+    gate_1 = state["drainage_gates"][0]["id"]
+    gate_2 = state["drainage_gates"][1]["id"]
+    substation = state["power_substations"][0]["name"]
+    fire_hub = state["emergency_hubs"][0]["name"]
+    ambulance_hub = state["emergency_hubs"][1]["name"]
+
     logs += [
-        _log("alert",   ts, "High water volume detected in Pavana River drainage basin. Sluice Gate sensors warning."),
-        _log("warning", ts, "Pavana River Flood Gate 1 at 95%. Automated pumps engaged."),
-        _log("warning", ts, "Pavana River Flood Gate 2 at 98%. Backflow prevention active."),
-        _log("alert",   ts, "Pimpri MSEDCL Substation Alpha reports basement water logging. Defenses required."),
+        _log("alert", ts, "⚠️ High water volume detected in the local drainage network. Flood-gate sensors are at threshold."),
+        _log("warning", ts, f"{gate_1} → 95%. Automated pump arrays engaged at full capacity."),
+        _log("warning", ts, f"{gate_2} → 98%. Backflow prevention valves activated. Gate auto-lock in progress."),
+        _log("alert", ts, f"{substation} reports rising water ingress. Emergency isolation protocols initiated."),
+        _log("dispatch", ts, f"{fire_hub} and {ambulance_hub} placed on IMMEDIATE PRE-DEPLOYMENT status."),
     ]
 
 
 def _apply_heat(state: dict, logs: list, ts: str, metrics: dict) -> None:
+    """
+    Label 2 – Severe Heatwave / Wildfire Risk.
+    Sets power substations to critical load (98 / 95 %), hospitals under surge.
+    """
     state["power_substations"][0].update({
         "load_percentage": 98,
-        "status": "Critical Load // Thermal Throttle",
+        "status": "Critical Load — Thermal Throttle Active",
         "status_indicator": "CRITICAL",
     })
     state["power_substations"][1].update({
         "load_percentage": 95,
-        "status": "Grid Overload // Heat Stressed",
+        "status": "Grid Overload — Heat Stressed / Transformer Cooling On",
         "status_indicator": "CRITICAL",
     })
-    state["hospitals"][0].update({"capacity": "95% (Heatstroke Admissions)", "status_indicator": "CRITICAL"})
-    state["hospitals"][1].update({"capacity": "92% (Cooling Load Spike)",    "status_indicator": "CRITICAL"})
+    state["hospitals"][0].update({
+        "capacity": "95% (Heatstroke Admissions Surge)",
+        "status_indicator": "CRITICAL",
+    })
+    state["hospitals"][1].update({
+        "capacity": "92% (Cooling Load Spike — Dehydration Cases)",
+        "status_indicator": "CRITICAL",
+    })
 
-    metrics["grid_load"] = max(metrics["grid_load"], 96.5)
+    metrics["grid_load"]       = max(metrics["grid_load"], 96.5)
+    metrics["flood_risk"]      = "LOW"
     if metrics["system_security"] != "COMPROMISED":
         metrics["system_security"] = "STRESSED"
 
+    substation_1 = state["power_substations"][0]["name"]
+    substation_2 = state["power_substations"][1]["name"]
+    hospital_1 = state["hospitals"][0]["name"]
+    hospital_2 = state["hospitals"][1]["name"]
+
     logs += [
-        _log("alert",   ts, "High thermal load: Urban heat island effect spikes substation loads."),
-        _log("warning", ts, "Pimpri MSEDCL Substation Alpha at 98% capacity. Active fan arrays engaged."),
-        _log("warning", ts, "Chinchwad Substation Beta at 95% capacity. Transformer cooling initiated."),
-        _log("alert",   ts, "YCM Hospital ER capacity spikes to 95% due to dehydration & thermal exhaustion cases."),
+        _log("alert",    ts, "🌡️ Urban heat island effect confirmed. Substation thermal load spike detected."),
+        _log("warning", ts, f"{substation_1} → 98% capacity. Active cooling fan arrays at maximum RPM."),
+        _log("warning", ts, f"{substation_2} → 95% capacity. Automatic transformer oil circulation initiated."),
+        _log("alert", ts, f"{hospital_1} ER surge: 95% capacity — dehydration and thermal-exhaustion admissions rising."),
+        _log("dispatch", ts, f"{hospital_2} activates heatstroke protocol. External cooling tents deployed."),
+        _log("warning", ts, "The local grid operator is issuing a voluntary load-reduction appeal to industrial nodes."),
     ]
 
 
-def _apply_power(state: dict, logs: list, ts: str, metrics: dict) -> None:
-    state["power_substations"][0].update({
-        "load_percentage": 100,
-        "status": "GRID TRIPPED // Offline",
-        "status_indicator": "CRITICAL",
-    })
-    for h in state["hospitals"]:
-        h.update({"power_status": "Emergency Generator Active", "status_indicator": "CRITICAL"})
-
-    metrics["grid_load"]       = max(metrics["grid_load"], 50.0)
-    metrics["system_security"] = "COMPROMISED"
-
+def _apply_normal(state: dict, logs: list, ts: str, metrics: dict) -> None:
+    """Label 0 – Normal / Clear Weather. No mutations needed."""
+    gates = " and ".join(gate["id"] for gate in state["drainage_gates"])
     logs += [
-        _log("alert",    ts, "MSEDCL Power Substation Alpha reports complete grid separation. Tripped state."),
-        _log("dispatch", ts, "YCM Hospital and Aditya Birla Hospital switched automatically to local backup diesel generators."),
+        _log_info(ts, "All systems within normal parameters. Digital Twin running standard background monitoring cycles."),
+        _log_info(ts, f"{gates}: Normal discharge. Power substations: Nominal load. Hospitals: Standard occupancy."),
+        _log_info(ts, "Emergency dispatch depots: Full fleet readiness. No alerts active."),
     ]
 
 
-def _apply_accident(state: dict, logs: list, ts: str, metrics: dict) -> None:
-    state["emergency_hubs"][0]["available_units"] = 2
-    state["emergency_hubs"][1]["available_units"] = 3
-    state["hospitals"][0].update({"capacity": "90% (Casualty Influx)", "status_indicator": "CRITICAL"})
+# ── Public entrypoint ─────────────────────────────────────────────────────────
 
-    metrics["dispatch_available"] = min(metrics["dispatch_available"], 5)
-    if metrics["system_security"] == "OPTIMAL":
-        metrics["system_security"] = "STRESSED"
-
-    logs += [
-        _log("alert",    ts, "Local emergency incident reported. Fire and rescue crews dispatched."),
-        _log("dispatch", ts, "Pimpri Fire Depot deployed 16 units to incident zone."),
-        _log("dispatch", ts, "YCM Hospital alerts emergency surgical wards."),
-    ]
-
-
-# Public entrypoint
-def update_city_state(scenario_text: str) -> tuple[dict, list[str], dict]:
+def update_city_state_from_ml(
+    ml_label: int,
+    ml_probs: list,
+    latitude: float = 18.6200,
+    longitude: float = 73.7950,
+    safety_reason: str = "",
+    city_name: str = "Selected City",
+) -> tuple[dict, list[str], dict]:
     """
-    Parse *scenario_text* and return a mutated digital-twin state.
+    Apply crisis mutations to the digital twin based on the Scikit-Learn
+    RandomForestClassifier prediction.
+
+    Parameters
+    ----------
+    ml_label : int         – predicted class label (0 = Normal, 1 = Flood, 2 = Heat)
+    ml_probs : list[float] – class probabilities [P(0), P(1), P(2)]
 
     Returns
     -------
-    state   : dict         – mutated city infrastructure state
-    logs    : list[str]    – list of HTML-formatted telemetry log entries
+    state   : dict         – mutated Pimpri-Chinchwad infrastructure state
+    logs    : list[str]    – HTML-formatted telemetry log entries
     metrics : dict         – KPI values for the metric cards
     """
-    state     = get_initial_city_state()
+    state = relocate_city_state(
+        get_initial_city_state(),
+        latitude,
+        longitude,
+        city_name,
+    )
     logs: list[str] = []
-    ts        = datetime.datetime.now().strftime("%H:%M:%S")
-    text      = scenario_text.lower()
+    ts   = datetime.datetime.now().strftime("%H:%M:%S")
 
-    is_flood    = _detect(text, _FLOOD_KEYS)
-    is_heat     = _detect(text, _HEAT_KEYS)
-    is_power    = _detect(text, _POWER_KEYS)
-    is_accident = _detect(text, _ACCIDENT_KEYS)
-
-    logs.append(_log_info(ts, f"Initiating simulation for scenario: '{scenario_text[:60]}...'"))
-
-    # Mutable metrics accumulator (uses floats internally; formatted on return)
+    # Base metrics accumulator
     metrics = {
         "grid_load":          58.5,
         "flood_risk":         "LOW",
@@ -176,22 +181,32 @@ def update_city_state(scenario_text: str) -> tuple[dict, list[str], dict]:
         "dispatch_available": 43,
     }
 
-    if is_flood:
+    # Dispatch classification header log
+    label_names = {0: "Normal/Clear", 1: "Flash Flood Risk", 2: "Heatwave/Wildfire Risk"}
+    logs.append(_log_info(
+        ts,
+        f"Scikit-Learn RandomForest prediction received → Label {ml_label}: "
+        f"{label_names[ml_label]} "
+        f"[P₀={ml_probs[0]:.2f} | P₁={ml_probs[1]:.2f} | P₂={ml_probs[2]:.2f}]"
+    ))
+    if safety_reason:
+        logs.append(_log(
+            "alert",
+            ts,
+            f"Live-weather safety override activated: {safety_reason}",
+        ))
+
+    if ml_label == 1:
         _apply_flood(state, logs, ts, metrics)
-    if is_heat:
+    elif ml_label == 2:
         _apply_heat(state, logs, ts, metrics)
-    if is_power:
-        _apply_power(state, logs, ts, metrics)
-    if is_accident:
-        _apply_accident(state, logs, ts, metrics)
+    else:
+        _apply_normal(state, logs, ts, metrics)
 
-    if not any([is_flood, is_heat, is_power, is_accident]):
-        logs.append(_log_info(ts, "Standard monitoring active. Digital Twin running normal background loads."))
-
-    # Format metrics for display
+    # Format metrics for display widgets
     disp_avail = metrics["dispatch_available"]
     formatted_metrics = {
-        "grid_load":       f"{metrics['grid_load']}%",
+        "grid_load":       f"{metrics['grid_load']:.1f}%",
         "flood_risk":      metrics["flood_risk"],
         "system_security": metrics["system_security"],
         "dispatch_status": (
