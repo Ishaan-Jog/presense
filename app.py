@@ -4,14 +4,14 @@ app.py
 PreSense – Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System
 
 Entry point: handles Streamlit UI layout and session-state orchestration.
-Business logic lives in the `guardian` package:
+Business logic lives in the `presense` package:
 
-    guardian/config.py      – page config, CSS, API-key loading
-    guardian/data_layer.py  – baseline digital-twin state
-    guardian/ml_engine.py   – city-specific RandomForest trained on Open-Meteo history
-    guardian/crisis_engine.py – ML-label-driven state mutator
-    guardian/map_renderer.py  – Folium map builder
-    guardian/ai_playbook.py   – OpenAI streaming generator
+    presense/config.py      – page config, CSS, API-key loading
+    presense/data_layer.py  – baseline digital-twin state
+    presense/ml_engine.py   – city-specific RandomForest trained on Open-Meteo history
+    presense/crisis_engine.py – ML-label-driven state mutator
+    presense/map_renderer.py  – Folium map builder
+    presense/ai_playbook.py   – OpenAI streaming generator
 """
 
 import datetime
