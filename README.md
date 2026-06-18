@@ -1,12 +1,12 @@
-# 🛡️ GuardianGrid
+# 🛡️ PreSense
 
-GuardianGrid is a Streamlit dashboard for real-time smart-infrastructure risk monitoring. It combines live Open-Meteo weather data, a city-specific RandomForest model, a digital-twin map, telemetry logs, and an optional AI playbook to simulate how a municipal response system could react to changing conditions.
+PreSense is a Streamlit dashboard for real-time smart-infrastructure risk monitoring. It combines live Open-Meteo weather data, a city-specific RandomForest model, a digital-twin map, telemetry logs, and an optional AI playbook to simulate how a municipal response system could react to changing conditions.
 
 Built as part of the **Edunet IBM SkillsBuild Internship** program.
 
 ## Live Demo
 
-Deployed link: https://guardian-grid.streamlit.app/
+Deployed link: <>
 
 ## Features
 
@@ -24,7 +24,7 @@ project/
 ├── app.py
 ├── README.md
 ├── requirements.txt
-└── guardian/
+└── presense/
    ├── __init__.py
    ├── ai_playbook.py
    ├── config.py
@@ -46,8 +46,8 @@ project/
 1. Clone the repository.
 
   ```bash
-  git clone https://github.com/Ishaan-Jog/guardian-grid.git
-  cd guardian-grid
+  git clone https://github.com/Ishaan-Jog/PreSense.git
+  cd PreSense
   ```
 
 2. Create a virtual environment.
