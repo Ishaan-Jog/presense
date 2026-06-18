@@ -28,6 +28,9 @@ class LiveWeather:
     wind_speed: float
     pressure: float
     precipitation: float
+    snowfall: float
+    snow_depth: float
+    soil_moisture: float
 
 
 def get_open_meteo_json(url: str, params: dict) -> dict:
@@ -82,7 +85,8 @@ def fetch_live_weather(city_name: str) -> LiveWeather:
             "longitude": longitude,
             "current": (
                 "temperature_2m,relative_humidity_2m,wind_speed_10m,"
-                "surface_pressure,precipitation"
+                "surface_pressure,precipitation,snowfall,snow_depth,"
+                "soil_moisture_0_to_1cm"
             ),
             "wind_speed_unit": "kmh",
             "timezone": "auto",
@@ -112,4 +116,9 @@ def fetch_live_weather(city_name: str) -> LiveWeather:
         wind_speed=float(current["wind_speed_10m"]),
         pressure=float(current["surface_pressure"]),
         precipitation=float(current.get("precipitation", 0.0) or 0.0),
+        snowfall=float(current.get("snowfall", 0.0) or 0.0),
+        snow_depth=float(current.get("snow_depth", 0.0) or 0.0),
+        soil_moisture=float(
+            current.get("soil_moisture_0_to_1cm", 0.0) or 0.0
+        ),
     )

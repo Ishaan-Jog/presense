@@ -261,7 +261,7 @@ def load_api_key() -> tuple[str, bool]:
     except Exception:
         pass
 
-    # --- Tier 2: sidebar input -----------------------------------------------
+    # Tier 2: sidebar input
     st.sidebar.markdown(
         "<div class='sidebar-section-title'>🔑 API Configuration</div>",
         unsafe_allow_html=True,

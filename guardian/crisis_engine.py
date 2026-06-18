@@ -1,8 +1,8 @@
 """
 guardian/crisis_engine.py
 --------------------------
-ML-driven crisis state controller.  Takes the Scikit-Learn prediction
-label (0/1/2) and probability scores, then mutates the digital-twin
+ML-driven crisis state controller. Takes the Scikit-Learn prediction
+label (0-4) and probability scores, then mutates the digital-twin
 state dictionary accordingly, returning updated state, telemetry HTML
 log entries, and KPI metrics.
 
@@ -129,6 +129,76 @@ def _apply_heat(state: dict, logs: list, ts: str, metrics: dict) -> None:
     ]
 
 
+def _apply_drought(state: dict, logs: list, ts: str, metrics: dict) -> None:
+    """Label 3 – Drought / water scarcity risk."""
+    state["drainage_gates"][0].update({
+        "water_level_percentage": 9,
+        "status": "CRITICAL LOW FLOW — Water Conservation Protocol Active",
+        "status_indicator": "CRITICAL",
+    })
+    state["drainage_gates"][1].update({
+        "water_level_percentage": 12,
+        "status": "LOW RESERVE — Controlled Retention Active",
+        "status_indicator": "CRITICAL",
+    })
+    state["power_substations"][0].update({
+        "load_percentage": 84,
+        "status": "Elevated Cooling Demand — Conservation Mode",
+        "status_indicator": "CRITICAL",
+    })
+    state["hospitals"][0].update({
+        "capacity": "82% (Dehydration Response Active)",
+        "status_indicator": "CRITICAL",
+    })
+
+    metrics["grid_load"] = 84.0
+    metrics["flood_risk"] = "DROUGHT"
+    metrics["system_security"] = "STRESSED"
+    metrics["dispatch_available"] = 28
+
+    gate_1 = state["drainage_gates"][0]["id"]
+    gate_2 = state["drainage_gates"][1]["id"]
+    hospital = state["hospitals"][0]["name"]
+    logs += [
+        _log("alert", ts, "🏜️ Critical soil-moisture deficit and prolonged dry-weather pattern detected."),
+        _log("warning", ts, f"{gate_1} and {gate_2} switched to controlled water-retention mode."),
+        _log("warning", ts, "Non-essential municipal water demand reduction protocol activated."),
+        _log("dispatch", ts, f"{hospital} begins dehydration surge readiness and potable-water reserve checks."),
+    ]
+
+
+def _apply_snow(state: dict, logs: list, ts: str, metrics: dict) -> None:
+    """Label 4 – Heavy snow / blizzard risk."""
+    for substation in state["power_substations"]:
+        substation.update({
+            "load_percentage": 91,
+            "status": "Ice Load Risk — Cold Weather Protection Active",
+            "status_indicator": "CRITICAL",
+        })
+    for hospital in state["hospitals"]:
+        hospital.update({
+            "power_status": "Backup Generation Armed — Snow Access Risk",
+            "status_indicator": "CRITICAL",
+        })
+    state["emergency_hubs"][0]["available_units"] = 7
+    state["emergency_hubs"][1]["available_units"] = 9
+
+    metrics["grid_load"] = 91.0
+    metrics["flood_risk"] = "SNOW/ICE"
+    metrics["system_security"] = "COMPROMISED"
+    metrics["dispatch_available"] = 16
+
+    substation_1 = state["power_substations"][0]["name"]
+    substation_2 = state["power_substations"][1]["name"]
+    fire_hub = state["emergency_hubs"][0]["name"]
+    logs += [
+        _log("alert", ts, "❄️ Heavy snow or blizzard pattern detected. Road and utility icing risk is critical."),
+        _log("warning", ts, f"{substation_1} and {substation_2} activate ice-load and cold-start protection."),
+        _log("dispatch", ts, f"{fire_hub} deploys snow-capable rescue units and road-clearance support."),
+        _log("warning", ts, "Hospitals arm backup power and restrict non-critical transport movements."),
+    ]
+
+
 def _apply_normal(state: dict, logs: list, ts: str, metrics: dict) -> None:
     """Label 0 – Normal / Clear Weather. No mutations needed."""
     gates = " and ".join(gate["id"] for gate in state["drainage_gates"])
@@ -139,8 +209,7 @@ def _apply_normal(state: dict, logs: list, ts: str, metrics: dict) -> None:
     ]
 
 
-# ── Public entrypoint ─────────────────────────────────────────────────────────
-
+# Public entrypoint
 def update_city_state_from_ml(
     ml_label: int,
     ml_probs: list,
@@ -155,8 +224,8 @@ def update_city_state_from_ml(
 
     Parameters
     ----------
-    ml_label : int         – predicted class label (0 = Normal, 1 = Flood, 2 = Heat)
-    ml_probs : list[float] – class probabilities [P(0), P(1), P(2)]
+    ml_label : int – 0 Normal, 1 Flood, 2 Heat, 3 Drought, 4 Snow
+    ml_probs : list[float] – probabilities in class order 0 through 4
 
     Returns
     -------
@@ -182,12 +251,22 @@ def update_city_state_from_ml(
     }
 
     # Dispatch classification header log
-    label_names = {0: "Normal/Clear", 1: "Flash Flood Risk", 2: "Heatwave/Wildfire Risk"}
+    label_names = {
+        0: "Normal/Clear",
+        1: "Flash Flood/Severe Storm Risk",
+        2: "Heatwave/Wildfire Risk",
+        3: "Drought/Water Scarcity Risk",
+        4: "Heavy Snow/Blizzard Risk",
+    }
+    probability_text = " | ".join(
+        f"P{index}={probability:.2f}"
+        for index, probability in enumerate(ml_probs)
+    )
     logs.append(_log_info(
         ts,
         f"Scikit-Learn RandomForest prediction received → Label {ml_label}: "
         f"{label_names[ml_label]} "
-        f"[P₀={ml_probs[0]:.2f} | P₁={ml_probs[1]:.2f} | P₂={ml_probs[2]:.2f}]"
+        f"[{probability_text}]"
     ))
     if safety_reason:
         logs.append(_log(
@@ -200,6 +279,10 @@ def update_city_state_from_ml(
         _apply_flood(state, logs, ts, metrics)
     elif ml_label == 2:
         _apply_heat(state, logs, ts, metrics)
+    elif ml_label == 3:
+        _apply_drought(state, logs, ts, metrics)
+    elif ml_label == 4:
+        _apply_snow(state, logs, ts, metrics)
     else:
         _apply_normal(state, logs, ts, metrics)
 

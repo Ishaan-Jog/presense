@@ -41,6 +41,8 @@ Probability Scores   :
   • P(Normal)                      = {p_normal:.1%}
   • P(Flash Flood Risk)            = {p_flood:.1%}
   • P(Heatwave / Wildfire Risk)    = {p_heat:.1%}
+  • P(Drought / Water Scarcity)    = {p_drought:.1%}
+  • P(Heavy Snow / Blizzard)       = {p_snow:.1%}
 
 === LIVE WEATHER TELEMETRY (Sensor Input) ===
   • Temperature        : {temp}°C
@@ -48,6 +50,9 @@ Probability Scores   :
   • Wind Speed         : {wind_speed} km/h
   • Barometric Pressure: {pressure} hPa
   • Current Precipitation: {precipitation} mm
+  • Current Snowfall     : {snowfall} cm
+  • Snow Depth           : {snow_depth} m
+  • Surface Soil Moisture: {soil_moisture} m³/m³
 
 === CITY DIGITAL TWIN – CURRENT MOCK INFRASTRUCTURE STATUS ===
 {state_json}
@@ -88,7 +93,7 @@ def stream_playbook(
     city_state    : mutated digital-twin dict from crisis_engine
     weather_params: dict with current Open-Meteo sensor values
     ml_label      : int prediction from RandomForestClassifier
-    ml_probs      : list of class probabilities [P(0), P(1), P(2)]
+    ml_probs      : list of class probabilities [P(0), ..., P(4)]
     ml_label_name : human-readable label string
     city_name     : resolved Open-Meteo city name
     model         : OpenAI model identifier (default: gpt-4o-mini)
@@ -106,11 +111,16 @@ def stream_playbook(
         p_normal=ml_probs[0],
         p_flood=ml_probs[1],
         p_heat=ml_probs[2],
+        p_drought=ml_probs[3],
+        p_snow=ml_probs[4],
         temp=weather_params["temp"],
         humidity=weather_params["humidity"],
         wind_speed=weather_params["wind_speed"],
         pressure=weather_params["pressure"],
         precipitation=weather_params.get("precipitation", 0.0),
+        snowfall=weather_params.get("snowfall", 0.0),
+        snow_depth=weather_params.get("snow_depth", 0.0),
+        soil_moisture=weather_params.get("soil_moisture", 0.0),
         state_json=json.dumps(city_state, indent=2),
     )
 

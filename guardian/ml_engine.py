@@ -12,6 +12,8 @@ derived from each city's own historical percentiles:
 0 -> Normal / lower-risk weather pattern
 1 -> Flood / severe-storm weather pattern
 2 -> Heatwave / wildfire weather pattern
+3 -> Drought weather pattern
+4 -> Snow / blizzard weather pattern
 """
 
 from dataclasses import dataclass
@@ -36,11 +38,16 @@ _FEATURE_COLS = [
     "wind_speed",
     "pressure",
     "precipitation",
+    "snowfall",
+    "snow_depth",
+    "soil_moisture",
 ]
 _LABEL_NAMES = {
     0: "Normal / Clear Weather",
     1: "Flash Flood / Severe Storm Risk",
     2: "Severe Heatwave / Wildfire Risk",
+    3: "Drought / Water Scarcity Risk",
+    4: "Heavy Snow / Blizzard Risk",
 }
 
 
@@ -53,8 +60,8 @@ class _CityModel:
     end_date: str
 
 
-# Returns a one-year window ending six days ago for archive availability
 def _historical_dates() -> tuple[str, str]:
+    """Return a one-year window ending six days ago for archive availability"""
     end = date.today() - timedelta(days=6)
     start = end - timedelta(days=365)
     return start.isoformat(), end.isoformat()
@@ -71,7 +78,8 @@ def _fetch_historical_dataset(latitude: float, longitude: float) -> pd.DataFrame
             "end_date": end_date,
             "hourly": (
                 "temperature_2m,relative_humidity_2m,wind_speed_10m,"
-                "surface_pressure,precipitation"
+                "surface_pressure,precipitation,snowfall,snow_depth,"
+                "soil_moisture_0_to_7cm"
             ),
             "wind_speed_unit": "kmh",
             "precipitation_unit": "mm",
@@ -85,6 +93,9 @@ def _fetch_historical_dataset(latitude: float, longitude: float) -> pd.DataFrame
         "wind_speed": "wind_speed_10m",
         "pressure": "surface_pressure",
         "precipitation": "precipitation",
+        "snowfall": "snowfall",
+        "snow_depth": "snow_depth",
+        "soil_moisture": "soil_moisture_0_to_7cm",
     }
 
     if not all(source in hourly for source in source_columns.values()):
@@ -125,12 +136,40 @@ def _derive_risk_labels(frame: pd.DataFrame) -> pd.Series:
         + 0.30 * (1.0 - ranks["humidity"])
         + 0.15 * ranks["wind_speed"]
     )
+    drought_score = (
+        0.40 * (1.0 - ranks["soil_moisture"])
+        + 0.25 * (1.0 - ranks["precipitation"])
+        + 0.20 * ranks["temperature"]
+        + 0.15 * (1.0 - ranks["humidity"])
+    )
+    snow_score = (
+        0.45 * ranks["snowfall"]
+        + 0.20 * ranks["snow_depth"]
+        + 0.20 * (1.0 - ranks["temperature"])
+        + 0.15 * ranks["wind_speed"]
+    )
 
     labels = pd.Series(0, index=frame.index, dtype=int)
-    flood_mask = flood_score >= flood_score.quantile(0.90)
-    heat_mask = (heat_score >= heat_score.quantile(0.90)) & ~flood_mask
+    snow_mask = (
+        (snow_score >= snow_score.quantile(0.90))
+        & ((frame["snowfall"] > 0) | (frame["snow_depth"] > 0))
+    )
+    flood_mask = (flood_score >= flood_score.quantile(0.90)) & ~snow_mask
+    heat_mask = (
+        (heat_score >= heat_score.quantile(0.90))
+        & ~flood_mask
+        & ~snow_mask
+    )
+    drought_mask = (
+        (drought_score >= drought_score.quantile(0.90))
+        & ~flood_mask
+        & ~heat_mask
+        & ~snow_mask
+    )
     labels.loc[flood_mask] = 1
     labels.loc[heat_mask] = 2
+    labels.loc[drought_mask] = 3
+    labels.loc[snow_mask] = 4
     return labels
 
 
@@ -166,6 +205,9 @@ def predict_risk(
     wind_speed: float,
     pressure: float,
     precipitation: float,
+    snowfall: float,
+    snow_depth: float,
+    soil_moisture: float,
     latitude: float,
     longitude: float,
 ) -> tuple[int, list[float], str]:
@@ -175,14 +217,23 @@ def predict_risk(
         _coordinate_key(longitude),
     )
     observation = np.array(
-        [[temp, humidity, wind_speed, pressure, precipitation]],
+        [[
+            temp,
+            humidity,
+            wind_speed,
+            pressure,
+            precipitation,
+            snowfall,
+            snow_depth,
+            soil_moisture,
+        ]],
         dtype=float,
     )
     scaled = bundle.scaler.transform(observation)
     label = int(bundle.model.predict(scaled)[0])
 
-    # Keep the public probability contract fixed at labels [0, 1, 2].
-    probabilities = [0.0, 0.0, 0.0]
+    # Keep the public probability contract fixed at labels [0, 1, 2, 3, 4].
+    probabilities = [0.0] * 5
     for model_class, probability in zip(
         bundle.model.classes_,
         bundle.model.predict_proba(scaled)[0],
