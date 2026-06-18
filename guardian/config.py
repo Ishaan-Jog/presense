@@ -11,79 +11,96 @@ page_config + markdown CSS call and the sidebar API-key input.
 import streamlit as st
 
 
-# ── CSS ─────────────────────────────────────────────────────────────────────
+# CSS
+
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap');
+/* Theme-driven styling */
+@import url('https://fonts.googleapis.com/css2?family=Pliant:ital,wght@0,100..900;1,100..900&display=swap');
+:root {
+    --guardian-sans: 'Pliant', sans-serif;
+    --guardian-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+    --guardian-bg: var(--background-color, #06111f);
+    --guardian-surface: var(--secondary-background-color, #0b1626);
+    --guardian-surface-strong: color-mix(in srgb, var(--secondary-background-color, #0b1626) 88%, white 12%);
+    --guardian-border: color-mix(in srgb, var(--primary-color, #2563eb) 35%, transparent);
+    --guardian-primary: var(--primary-color, #2563eb);
+    --guardian-primary-soft: color-mix(in srgb, var(--primary-color, #2563eb) 14%, transparent);
+    --guardian-text: var(--text-color, #e2e8f0);
+    --guardian-muted: color-mix(in srgb, var(--text-color, #e2e8f0) 74%, transparent);
+}
 
 body, .stApp {
-    background-color: #05080f;
+    background-color: var(--guardian-bg);
+    font-family: var(--guardian-sans);
+    color: var(--guardian-text);
+}
+
+html {
+    scroll-behavior: smooth;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: var(--guardian-sans) !important;
+    letter-spacing: 0;
 }
 
 div[data-testid="stMetricValue"] {
-    font-family: 'JetBrains Mono', monospace !important;
-    font-weight: 700;
+    font-family: var(--guardian-sans) !important;
+    font-weight: 600;
     font-size: 1.4rem;
 }
 
 /* ── Header Banner ── */
 .header-banner {
-    background: linear-gradient(135deg, #090d16 0%, #1e1b4b 60%, #311042 100%);
-    border: 1px solid #312e81;
+    background: var(--guardian-surface);
+    border: 1px solid var(--guardian-border);
     border-radius: 14px;
     padding: 26px 32px;
     margin-bottom: 22px;
-    box-shadow: 0 0 40px rgba(99, 102, 241, 0.18), 0 0 80px rgba(99,102,241,0.06);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.26);
     position: relative;
     overflow: hidden;
 }
 .header-banner::before {
     content: '';
     position: absolute;
-    top: -40%;
-    right: -10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
     pointer-events: none;
 }
 .header-banner h1 {
     color: #ffffff;
-    font-weight: 800;
-    letter-spacing: 1.8px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
     margin: 0;
     font-size: 2rem;
-    text-shadow: 0 0 14px rgba(99, 102, 241, 0.55);
 }
 .header-banner p {
-    color: #a5b4fc;
+    color: var(--guardian-muted);
     margin: 6px 0 0 0;
     font-size: 0.88rem;
     text-transform: uppercase;
-    letter-spacing: 2.5px;
-    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    font-family: var(--guardian-sans);
 }
 .header-tag {
     display: inline-block;
-    background: rgba(99,102,241,0.15);
-    border: 1px solid rgba(99,102,241,0.35);
+    background: var(--guardian-primary-soft);
+    border: 1px solid color-mix(in srgb, var(--guardian-primary) 32%, transparent);
     border-radius: 4px;
     padding: 2px 8px;
     font-size: 0.7rem;
-    color: #818cf8;
-    letter-spacing: 1.5px;
-    font-family: 'JetBrains Mono', monospace;
+    color: color-mix(in srgb, var(--guardian-primary) 70%, white 30%);
+    letter-spacing: 0.8px;
+    font-family: var(--guardian-sans);
     margin-bottom: 10px;
 }
 
 /* ── KPI Metric Cards ── */
 div[data-testid="metric-container"] {
-    background: linear-gradient(145deg, #0d1222 0%, #111827 100%);
-    border: 1px solid #1e293b;
+    background: linear-gradient(145deg, var(--guardian-surface) 0%, var(--guardian-surface-strong) 100%);
+    border: 1px solid color-mix(in srgb, var(--guardian-border) 70%, #1e293b 30%);
     border-radius: 12px;
     padding: 16px 20px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
@@ -91,44 +108,44 @@ div[data-testid="metric-container"] {
 }
 div[data-testid="metric-container"]:hover {
     transform: translateY(-3px);
-    border-color: #6366f1;
-    box-shadow: 0 0 18px rgba(99, 102, 241, 0.22);
+    border-color: var(--guardian-primary);
+    box-shadow: 0 0 18px rgba(37, 99, 235, 0.16);
 }
 div[data-testid="stMetricLabel"] > div {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: var(--guardian-sans) !important;
     font-size: 0.78rem !important;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.6px;
     color: #94a3b8 !important;
 }
 
 /* ── ML Section divider ── */
 .ml-section-header {
-    background: linear-gradient(90deg, rgba(99,102,241,0.12) 0%, transparent 100%);
-    border-left: 4px solid #6366f1;
+    background: linear-gradient(90deg, var(--guardian-primary-soft) 0%, transparent 100%);
+    border-left: 4px solid var(--guardian-primary);
     border-radius: 0 8px 8px 0;
     padding: 10px 16px;
     margin: 18px 0 12px 0;
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--guardian-sans);
     font-size: 0.82rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: #818cf8;
+    letter-spacing: 0.8px;
+    color: color-mix(in srgb, var(--guardian-primary) 65%, white 35%);
     font-weight: 600;
 }
 
 /* ── Risk Badge ── */
-.risk-badge-normal   { color: #10b981; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-.risk-badge-flood    { color: #38bdf8; font-weight: 700; font-family: 'JetBrains Mono', monospace; animation: pulse-blue 1.5s infinite; }
-.risk-badge-heat     { color: #f87171; font-weight: 700; font-family: 'JetBrains Mono', monospace; animation: pulse-red 1.5s infinite; }
+.risk-badge-normal   { color: #34d399; font-weight: 700; font-family: var(--guardian-sans); }
+.risk-badge-flood    { color: #38bdf8; font-weight: 700; font-family: var(--guardian-sans); animation: pulse-blue 1.5s infinite; }
+.risk-badge-heat     { color: #ef4444; font-weight: 700; font-family: var(--guardian-sans); animation: pulse-red 1.5s infinite; }
 
 @keyframes pulse-blue {
-    0%, 100% { text-shadow: 0 0 6px rgba(56,189,248,0.4); }
-    50%       { text-shadow: 0 0 18px rgba(56,189,248,0.85); }
+    0%, 100% { text-shadow: 0 0 6px rgba(56,189,248,0.28); }
+    50%       { text-shadow: 0 0 18px rgba(56,189,248,0.62); }
 }
 @keyframes pulse-red {
-    0%, 100% { text-shadow: 0 0 6px rgba(248,113,113,0.4); }
-    50%       { text-shadow: 0 0 18px rgba(248,113,113,0.85); }
+    0%, 100% { text-shadow: 0 0 6px rgba(239,68,68,0.28); }
+    50%       { text-shadow: 0 0 18px rgba(239,68,68,0.62); }
 }
 
 /* ── Terminal Log ── */
@@ -139,7 +156,7 @@ div[data-testid="stMetricLabel"] > div {
     padding: 15px;
     height: 420px;
     overflow-y: auto;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--guardian-mono);
     font-size: 0.80rem;
 }
 .log-entry {
@@ -147,6 +164,7 @@ div[data-testid="stMetricLabel"] > div {
     line-height: 1.5;
     border-left: 3px solid #374151;
     padding-left: 10px;
+    font-family: var(--guardian-mono);
 }
 .log-time           { color: #6b7280; font-weight: bold; }
 .log-level-info     { color: #34d399; }
@@ -162,23 +180,69 @@ div[data-testid="stMetricLabel"] > div {
 
 /* ── AI Playbook ── */
 .playbook-container {
-    background: linear-gradient(145deg, #0a0e1a 0%, #0f1626 100%);
-    border: 1px solid #312e81;
-    border-left: 6px solid #6366f1;
+    background: linear-gradient(145deg, var(--guardian-bg) 0%, var(--guardian-surface) 100%);
+    border: 1px solid var(--guardian-border);
+    border-left: 6px solid var(--guardian-primary);
     border-radius: 10px;
     padding: 18px 24px;
     margin-top: 12px;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), 0 0 40px rgba(99,102,241,0.07);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35), 0 0 40px rgba(37, 99, 235, 0.05);
 }
 .playbook-title {
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--guardian-sans);
     font-size: 1.15rem;
     font-weight: bold;
     color: #e0e7ff;
-    letter-spacing: 1.2px;
+    letter-spacing: 0.2px;
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.broadcast-canvas {
+    background: linear-gradient(145deg, var(--guardian-bg) 0%, var(--guardian-surface) 100%);
+    border: 1px solid color-mix(in srgb, var(--guardian-border) 80%, #334155 20%);
+    border-left: 6px solid #22c55e;
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-top: 16px;
+    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.28);
+}
+.broadcast-canvas-title {
+    font-family: var(--guardian-sans);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #86efac;
+    margin-bottom: 10px;
+}
+
+.return-top-button {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 9999;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--guardian-surface) 0%, var(--guardian-surface-strong) 100%);
+    border: 1px solid var(--guardian-primary);
+    color: color-mix(in srgb, var(--guardian-primary) 74%, white 26%) !important;
+    text-decoration: none !important;
+    font-family: var(--guardian-sans);
+    font-size: 1rem;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+.return-top-button:hover {
+    transform: translateY(-2px);
+    border-color: #60a5fa;
+    box-shadow: 0 10px 28px rgba(37, 99, 235, 0.18);
 }
 
 /* ── Probability Bar ── */
@@ -187,13 +251,13 @@ div[data-testid="stMetricLabel"] > div {
     align-items: center;
     gap: 10px;
     margin: 4px 0;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--guardian-sans);
     font-size: 0.78rem;
 }
 .prob-label { color: #94a3b8; width: 200px; flex-shrink: 0; }
 .prob-bar-bg {
     flex: 1;
-    background: #1e293b;
+    background: color-mix(in srgb, var(--guardian-surface) 70%, #1e293b 30%);
     border-radius: 4px;
     height: 8px;
     overflow: hidden;
@@ -207,15 +271,15 @@ div[data-testid="stMetricLabel"] > div {
 
 /* ── Sidebar styling ── */
 .sidebar-section-title {
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--guardian-sans);
     font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: #6366f1;
+    letter-spacing: 0.8px;
+    color: color-mix(in srgb, var(--guardian-primary) 60%, white 40%);
     font-weight: 600;
     margin: 16px 0 8px 0;
     padding-bottom: 4px;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid color-mix(in srgb, var(--guardian-border) 70%, #1e293b 30%);
 }
 </style>
 """
@@ -224,7 +288,7 @@ div[data-testid="stMetricLabel"] > div {
 def configure_page() -> None:
     """Set Streamlit page config and inject global CSS. Call once at startup."""
     st.set_page_config(
-        page_title="GuardianGrid | Hybrid AI Smart City Infrastructure Defender",
+        page_title="GuardianGrid | Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System",
         page_icon="🛡️",
         layout="wide",
         initial_sidebar_state="expanded",

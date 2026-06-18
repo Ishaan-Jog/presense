@@ -1,8 +1,7 @@
 """
 app.py
 ------
-GuardianGrid – Hybrid AI Smart City Disaster Predictor & Infrastructure
-Auto-Defender.
+GuardianGrid – Real-Time ML Disaster Predictor & AI-based Civil Defense Orchestration System
 
 Entry point: handles Streamlit UI layout and session-state orchestration.
 Business logic lives in the `guardian` package:
@@ -16,9 +15,20 @@ Business logic lives in the `guardian` package:
 """
 
 import datetime
+import re
+from io import BytesIO
+from html import escape
+from pathlib import Path
 
 import streamlit as st
 from streamlit_folium import st_folium
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
 from guardian.config      import configure_page, load_api_key
 from guardian.ml_engine import (
@@ -30,6 +40,27 @@ from guardian.crisis_engine import update_city_state_from_ml
 from guardian.map_renderer  import build_map
 from guardian.ai_playbook   import stream_playbook
 from guardian.weather_service import fetch_live_weather, WeatherServiceError
+
+
+_PDF_FONT_REGISTRY_READY = False
+
+
+def _register_pdf_fonts() -> tuple[str, str]:
+    """Register a Unicode-capable Windows font for PDF exports."""
+    global _PDF_FONT_REGISTRY_READY
+    if not _PDF_FONT_REGISTRY_READY:
+        font_dir = Path(r"C:\Windows\Fonts")
+        body_font_path = font_dir / "mangal.ttf"
+        bold_font_path = font_dir / "mangalb.ttf"
+        if body_font_path.exists():
+            pdfmetrics.registerFont(TTFont("Mangal", str(body_font_path)))
+        if bold_font_path.exists():
+            pdfmetrics.registerFont(TTFont("Mangal-Bold", str(bold_font_path)))
+        _PDF_FONT_REGISTRY_READY = True
+    registered_fonts = set(pdfmetrics.getRegisteredFontNames())
+    body_font = "Mangal" if "Mangal" in registered_fonts else "Helvetica"
+    bold_font = "Mangal-Bold" if "Mangal-Bold" in registered_fonts else "Helvetica-Bold"
+    return body_font, bold_font
 
 
 # Page and API setup
@@ -72,14 +103,167 @@ def _normalize_probs(probs: list[float]) -> list[float]:
         normalized.extend([0.0] * (5 - len(normalized)))
     return normalized
 
+
+def _markdown_line_to_reportlab(line: str) -> str:
+    line = escape(line)
+    line = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", line)
+    line = re.sub(r"`(.+?)`", r"<font name='Courier'>\1</font>", line)
+    return line
+
+
+def _playbook_to_pdf_bytes(playbook_text: str) -> bytes:
+    buffer = BytesIO()
+    body_font, bold_font = _register_pdf_fonts()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=42,
+        rightMargin=42,
+        topMargin=42,
+        bottomMargin=42,
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name="PlaybookTitle",
+        parent=styles["Heading1"],
+        fontName=bold_font,
+        fontSize=16,
+        leading=20,
+        textColor=colors.HexColor("#111827"),
+        alignment=TA_LEFT,
+        spaceAfter=10,
+    ))
+    styles.add(ParagraphStyle(
+        name="PlaybookHeading2",
+        parent=styles["Heading2"],
+        fontName=bold_font,
+        fontSize=12,
+        leading=15,
+        textColor=colors.HexColor("#1f2937"),
+        spaceBefore=8,
+        spaceAfter=4,
+    ))
+    styles.add(ParagraphStyle(
+        name="PlaybookHeading3",
+        parent=styles["Heading3"],
+        fontName=bold_font,
+        fontSize=10.5,
+        leading=13,
+        textColor=colors.HexColor("#374151"),
+        spaceBefore=6,
+        spaceAfter=3,
+    ))
+    styles.add(ParagraphStyle(
+        name="PlaybookBody",
+        parent=styles["BodyText"],
+        fontName=body_font,
+        fontSize=9.4,
+        leading=13,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=3,
+    ))
+
+    story = []
+    for raw_line in playbook_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            story.append(Spacer(1, 4))
+            continue
+        if line.startswith("## "):
+            story.append(Paragraph(_markdown_line_to_reportlab(line[3:]), styles["PlaybookTitle"]))
+        elif line.startswith("### "):
+            story.append(Paragraph(_markdown_line_to_reportlab(line[4:]), styles["PlaybookHeading2"]))
+        elif line.startswith("#### "):
+            story.append(Paragraph(_markdown_line_to_reportlab(line[5:]), styles["PlaybookHeading3"]))
+        elif line.startswith("- "):
+            story.append(Paragraph(f"• {_markdown_line_to_reportlab(line[2:])}", styles["PlaybookBody"]))
+        else:
+            story.append(Paragraph(_markdown_line_to_reportlab(line), styles["PlaybookBody"]))
+
+    document.build(story)
+    return buffer.getvalue()
+
+
+def _extract_broadcast_section(playbook_text: str) -> str:
+    match = re.search(
+        r"### 4\. Public Broadcast Canvas\s*(.*?)(?=\n### \d+\.|\Z)",
+        playbook_text,
+        flags=re.DOTALL,
+    )
+    return match.group(1).strip() if match else ""
+
+
+def _playbook_without_broadcast(playbook_text: str) -> str:
+    return re.sub(
+        r"\n### 4\. Public Broadcast Canvas\s*.*?(?=\n### \d+\.|\Z)",
+        "",
+        playbook_text,
+        flags=re.DOTALL,
+    ).strip()
+
+
+def _safe_filename(value: str) -> str:
+    value = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
+    return value or "GuardianGrid_Playbook"
+
+
+def _render_playbook_header(playbook_text: str, risk_tag: str) -> None:
+    export_name = _safe_filename(f"GuardianGrid_{st.session_state.city_name}_{risk_tag}_Playbook")
+    text_bytes = playbook_text.encode("utf-8")
+    pdf_bytes = _playbook_to_pdf_bytes(playbook_text)
+
+    title_col, text_col, pdf_col = st.columns([6, 1, 1])
+    with title_col:
+        st.markdown(
+            f'<div class="playbook-container">'
+            f'<div class="playbook-title">'
+            f'📋 ACTIVE MITIGATION PLAYBOOK — {risk_tag} RESPONSE</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with text_col:
+        st.download_button(
+            "⬇ TXT",
+            data=text_bytes,
+            file_name=f"{export_name}.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+    with pdf_col:
+        st.download_button(
+            "⬇ PDF",
+            data=pdf_bytes,
+            file_name=f"{export_name}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+
+def _render_broadcast_canvas(playbook_text: str) -> None:
+    broadcast_section = _extract_broadcast_section(playbook_text)
+    if not broadcast_section:
+        return
+    with st.container(border=True):
+        st.markdown(
+            '<div class="broadcast-canvas-title">📡 Public Broadcast Canvas</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(broadcast_section)
+
 if "ml_label" not in st.session_state:
     _default_session()
+
+st.markdown('<div id="page-top"></div>', unsafe_allow_html=True)
+st.markdown(
+    '<a class="return-top-button" href="#page-top" title="Go to top" aria-label="Go to top">↑</a>',
+    unsafe_allow_html=True,
+)
 
 
 # Sidebar
 # (API key section rendered by load_api_key() above)
 st.sidebar.markdown(
-    "<div class='sidebar-section-title'>📡 Open-Meteo Live Weather Input</div>",
+    "<div class='sidebar-section-title'>📡 Live Weather Input</div>",
     unsafe_allow_html=True,
 )
 
@@ -88,18 +272,16 @@ city_query = st.sidebar.text_input("Enter City Name", value="Pune")
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
 run_btn   = st.sidebar.button("🔮 Run Assessment", type="primary", use_container_width=True)
-reset_btn = st.sidebar.button("🔄 Reset Digital Twin",             use_container_width=True)
-
 st.sidebar.markdown("---")
 model_name = st.sidebar.selectbox(
-    "🤖 AI Inference Model",
-    ["gpt-4o-mini", "gpt-4o"],
+    "⚙️ AI Inference Model",
+    ["gpt-5-nano", "gpt-4.1-nano"],
     index=0,
     help="OpenAI model used by the Autonomous Playbook engine.",
 )
 
 # Feature importance expander (educational / debug)
-with st.sidebar.expander("📊 ML Model ● Feature Importances", expanded=False):
+with st.sidebar.expander("📊 ML Model • Feature Importances", expanded=False):
     if not st.session_state.assessment_ran:
         st.caption("Run an assessment to train the selected city's model.")
     else:
@@ -137,11 +319,6 @@ with st.sidebar.expander("📊 ML Model ● Feature Importances", expanded=False
                 unsafe_allow_html=True,
             )
 
-
-# Button actions
-if reset_btn:
-    _default_session()
-    st.rerun()
 
 if run_btn:
     try:
@@ -260,9 +437,9 @@ if st.session_state.weather_error:
 # Header
 st.markdown(
     '<div class="header-banner">'
-    f'<div class="header-tag">{st.session_state.city_name.upper()} ● DIGITAL TWIN</div>'
-    '<h1>🛡️ GUARDIANGRID | Hybrid Smart Infrastructure AI</h1>'
-    '<p>Real-Time ML Disaster Predictor &amp; Civil Defense Orchestration System</p>'
+    f'<div class="header-tag">{st.session_state.city_name.upper()} • DIGITAL TWIN</div>'
+    '<h1>🛡️ GuardianGrid</h1>'
+    '<p>Real-Time ML Disaster Predictor &amp; AI-based Civil Defense Orchestration System</p>'
     '</div>',
     unsafe_allow_html=True,
 )
@@ -330,11 +507,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 weather = st.session_state.weather_params
 if st.session_state.assessment_ran:
     st.markdown(
-        f"### 🌦️ Live Open-Meteo Telemetry ● {st.session_state.city_name}"
+        f"### 🌦️ Live Weather Telemetry • {st.session_state.city_name}"
     )
     st.caption(
         f"Resolved coordinates: {st.session_state.latitude:.4f}, "
-        f"{st.session_state.longitude:.4f} ● "
+        f"{st.session_state.longitude:.4f} • "
         f"Current precipitation: {weather['precipitation']:.1f} mm"
     )
     col_w1, col_w2, col_w3, col_w4 = st.columns(4)
@@ -402,7 +579,7 @@ if st.session_state.assessment_ran:
     st.markdown(
         f"<div style='background:#0d1222;border:1px solid #1e293b;border-radius:10px;"
         f"padding:14px 18px;margin-bottom:10px;'>"
-        f"<div class='ml-section-header'>RandomForest ● Probability Distribution</div>"
+        f"<div class='ml-section-header'>RandomForest • Probability Distribution</div>"
         f"{bars_html}"
         f"</div>",
         unsafe_allow_html=True,
@@ -422,7 +599,7 @@ col_left, col_right = st.columns([6, 4])
 
 with col_left:
     st.markdown(
-        f"### 🌐 Digital Twin Spatial Map ● {st.session_state.city_name}"
+        f"### 🌐 Digital Twin Spatial Map • {st.session_state.city_name}"
     )
     st.caption(
         "Green markers = healthy assets.  Red markers = crisis/critical state.  "
@@ -484,15 +661,9 @@ else:
     }
     risk_tag = risk_tags[label]
     if st.session_state.mitigation_playbook:
-        # Persisted result – redisplay without re-calling API
-        st.markdown(
-            f'<div class="playbook-container">'
-            f'<div class="playbook-title">'
-            f'📋 ACTIVE MITIGATION PLAYBOOK — {risk_tag} RESPONSE</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown(st.session_state.mitigation_playbook)
+        _render_playbook_header(st.session_state.mitigation_playbook, risk_tag)
+        st.markdown(_playbook_without_broadcast(st.session_state.mitigation_playbook))
+        _render_broadcast_canvas(st.session_state.mitigation_playbook)
 
     else:
         st.warning(
@@ -507,7 +678,7 @@ else:
             title_ph.markdown(
                 '<div class="playbook-container">'
                 '<div class="playbook-title">'
-                '⚙️ AUTONOMOUS ENGINE COMPUTING MITIGATION CHANNELS...</div>'
+                '⚙️ COMPUTING MITIGATION CHANNELS...</div>'
                 '</div>',
                 unsafe_allow_html=True,
             )
@@ -528,13 +699,6 @@ else:
                     output_ph.markdown(full_text)
 
                 st.session_state.mitigation_playbook = full_text
-                title_ph.markdown(
-                    f'<div class="playbook-container">'
-                    f'<div class="playbook-title">'
-                    f'📋 ACTIVE MITIGATION PLAYBOOK — {risk_tag} RESPONSE</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
                 st.rerun()
 
             except Exception as exc:

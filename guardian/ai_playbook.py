@@ -26,9 +26,12 @@ _SYSTEM_PROMPT = (
     "structural telemetry of the city's digital twin during a disaster, and "
     "instantly execute preliminary precautions, infrastructure mitigation, "
     "resource allocation, and civil defense automation strategies. "
-    "Be structured, authoritative, action-oriented, and write in clear "
-    "markdown formatting. Do not use legacy markdown that breaks Streamlit "
-    "rendering. Keep responses concise and focused on high-impact steps."
+    "Return only the playbook content. Do not ask follow-up questions, offer "
+    "alternatives, or end with closing offers such as 'If you'd like'. "
+    "Use valid markdown with clear headings and subheadings. Do not output "
+    "plain text paragraphs without headings. Keep responses concise, direct, "
+    "and action-oriented. Highlight the title portion before every colon by "
+    "making it bold, for example: **Title:** description."
 )
 
 _USER_PROMPT_TEMPLATE = """\
@@ -62,13 +65,45 @@ Based on the above ML prediction probabilities and the live infrastructure \
 status of {city_name}, generate a structured **Autonomous \
 Preliminary Precaution & Critical Mitigation Playbook** covering:
 
-1. **Automated Infrastructure Changes** \
-(power load shedding, sluice gate automation, grid failover commands)
-2. **Emergency Resource Dispatch** \
-(depot routing, fleet pre-positioning, hospital surge alerts)
-3. **Automated Civil Broadcast** \
-(localized emergency broadcast scripts referencing {city_name} and the \
-mock infrastructure nodes supplied in the digital-twin status)
+Return the response in this exact markdown structure:
+
+## Autonomous Mitigation Playbook
+
+### 1. Situation Summary
+- **Summary:** One short paragraph summarizing the risk level and current city state.
+
+### 2. Automated Infrastructure Changes
+- 3 to 5 bullet points with concrete control actions.
+- Make the title part before the colon bold in every bullet.
+
+### 3. Emergency Resource Dispatch
+- 3 to 5 bullet points with concrete dispatch actions.
+- Make the title part before the colon bold in every bullet.
+
+### 4. Public Broadcast Canvas
+Provide the broadcast as a dedicated canvas-style section with these two parts:
+
+#### English Broadcast
+- **Message:** 1 short public-safety broadcast written in English for residents of {city_name}.
+
+#### Local Language Broadcast
+- **Message:** 1 short public-safety broadcast written in the city's local language, only if you can confidently infer it from the provided city and country context.
+- If you cannot confidently infer a local language, omit this subsection entirely and provide only the English broadcast.
+
+Use the city name, likely local places, and calm emergency instructions. Keep both versions short and readable.
+
+### 5. Immediate Priority Actions
+- 3 bullet points ordered by urgency.
+- Make the title part before the colon bold in every bullet.
+
+Formatting rules:
+- Start immediately with the first markdown heading.
+- Do not include any preamble, apology, explanation, or follow-up question.
+- Do not end with 'If you'd like', 'Would you like', or similar offers.
+- Do not use tables.
+- Use concise bullet points only under headings.
+- Reference {city_name} and the specific infrastructure nodes from the digital-twin status where relevant.
+- For any bullet point, bold the text before the colon.
 """
 
 
