@@ -64,8 +64,8 @@ class _CityModel:
 
 def _historical_dates() -> tuple[str, str]:
     """Return a one-year window ending six days ago for archive availability"""
-    end = date.today() - timedelta(days=6)
-    start = end - timedelta(days=365)
+    end = date.today() - timedelta(days=7)
+    start = end - timedelta(days=3653)
     return start.isoformat(), end.isoformat()
 
 
