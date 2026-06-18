@@ -1,4 +1,6 @@
 """
+modules/weather_service.py
+----------------------
 Open-Meteo integration for city geocoding and live weather telemetry.
 
 Both endpoints are free and do not require an API key.

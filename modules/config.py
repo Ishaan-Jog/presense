@@ -1,5 +1,5 @@
 """
-guardian/config.py
+modules/config.py
 ------------------
 Handles page configuration, global CSS injection, and OpenAI API-key
 resolution (secrets.toml first, sidebar text_input fallback).

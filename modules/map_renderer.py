@@ -1,5 +1,5 @@
 """
-guardian/map_renderer.py
+modules/map_renderer.py
 -------------------------
 Builds and returns an interactive Folium map of the Pimpri-Chinchwad
 digital twin.  Marker colours and transmission-line colours update

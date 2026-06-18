@@ -1,4 +1,6 @@
 """
+modules/ml_engine.py
+---------------------
 City-specific Scikit-Learn risk engine backed by real Open-Meteo history.
 
 For each selected city, the engine downloads one year of hourly historical

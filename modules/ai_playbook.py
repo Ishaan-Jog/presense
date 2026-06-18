@@ -1,5 +1,5 @@
 """
-guardian/ai_playbook.py
+modules/ai_playbook.py
 -----------------------
 OpenAI streaming integration.  Sends the current digital-twin state,
 live weather telemetry, and Scikit-Learn probability scores to the
