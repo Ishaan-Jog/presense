@@ -52,7 +52,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
     hosps = city_state["hospitals"]
     gates = city_state["drainage_gates"]
 
-    # Substation Alpha → YCM Hospital
+    # Substation Alpha → Central General Hospital
     alpha_crit = subs[0]["status_indicator"]
     folium.PolyLine(
         locations=[[subs[0]["lat"], subs[0]["lon"]], [hosps[0]["lat"], hosps[0]["lon"]]],
@@ -62,7 +62,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
         tooltip=f"Power line: {subs[0]['name']} → {hosps[0]['name']}",
     ).add_to(m)
 
-    # Substation Beta → Aditya Birla Hospital
+    # Substation Beta -> North Medical Center
     beta_crit = subs[1]["status_indicator"]
     folium.PolyLine(
         locations=[[subs[1]["lat"], subs[1]["lon"]], [hosps[1]["lat"], hosps[1]["lon"]]],
@@ -72,7 +72,7 @@ def _add_transmission_lines(m: folium.Map, city_state: dict) -> None:
         tooltip=f"Power line: {subs[1]['name']} → {hosps[1]['name']}",
     ).add_to(m)
 
-    # Pavana sluice gate interconnect
+    # Sluice gate interconnect
     gate_crit = gates[0]["status_indicator"]
     folium.PolyLine(
         locations=[[gates[0]["lat"], gates[0]["lon"]], [gates[1]["lat"], gates[1]["lon"]]],
@@ -157,15 +157,21 @@ def build_map(
     longitude: float = 73.7950,
 ) -> folium.Map:
     """
-    Build a Folium dark-map centred on Pimpri-Chinchwad and add all
-    digital-twin asset layers drawn from *city_state*.
+    Build a Folium satellite map centred on Pimpri-Chinchwad and add all
+    digital-twin asset layers and geographic labels drawn from *city_state*.
     """
     m = folium.Map(
         location=[latitude, longitude],
         zoom_start=13,
-        tiles="CartoDB dark_matter",
-        attr="© CartoDB",
+        tiles="Esri.WorldImagery",
+        attr="Tiles &copy; Esri",
     )
+    folium.TileLayer(
+        tiles="CartoDB PositronOnlyLabels",
+        name="Geographic labels",
+        overlay=True,
+        control=False,
+    ).add_to(m)
     _add_transmission_lines(m, city_state)
     _add_hospitals(m,        city_state["hospitals"])
     _add_substations(m,      city_state["power_substations"])
