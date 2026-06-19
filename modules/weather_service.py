@@ -7,6 +7,7 @@ Both endpoints are free and do not require an API key.
 """
 
 from dataclasses import dataclass
+import time
 
 import requests
 
@@ -37,16 +38,26 @@ class LiveWeather:
 
 def get_open_meteo_json(url: str, params: dict) -> dict:
     """Request and decode an Open-Meteo JSON response."""
-    try:
-        response = requests.get(url, params=params, timeout=12)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as exc:
-        raise WeatherServiceError(
-            "Unable to contact Open-Meteo. Check your internet connection and try again."
-        ) from exc
-    except ValueError as exc:
-        raise WeatherServiceError("Open-Meteo returned an invalid response.") from exc
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            response = requests.get(url, params=params, timeout=12)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise WeatherServiceError(
+                "Unable to contact Open-Meteo. Check your internet connection and try again."
+            ) from exc
+        except ValueError as exc:
+            raise WeatherServiceError("Open-Meteo returned an invalid response.") from exc
+
+    raise WeatherServiceError(
+        "Unable to contact Open-Meteo. Check your internet connection and try again."
+    ) from last_error
 
 
 def fetch_live_weather(city_name: str) -> LiveWeather:
