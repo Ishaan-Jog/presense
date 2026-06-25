@@ -20,11 +20,11 @@ Deployed link: https://pre-sense.streamlit.app/
 ## Project Structure
 
 ```text
-project/
+presense/
 ├── app.py
 ├── README.md
 ├── requirements.txt
-└── presense/
+└── modules/
    ├── __init__.py
    ├── ai_playbook.py
    ├── config.py
@@ -33,6 +33,8 @@ project/
    ├── map_renderer.py
    ├── ml_engine.py
    └── weather_service.py
+└── .streamlit/
+   └── config.toml
 ```
 
 ## Requirements
