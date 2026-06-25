@@ -50,7 +50,7 @@ project/
   cd presense
   ```
 
-2. Create a virtual environment.
+2. Create a virtual environment. (optional, but recommended)
 
   ```bash
   python -m venv .venv
