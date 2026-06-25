@@ -24,7 +24,7 @@ presense/
 ├── app.py
 ├── README.md
 ├── requirements.txt
-└── modules/
+├── modules/
    ├── __init__.py
    ├── ai_playbook.py
    ├── config.py
