@@ -4,10 +4,6 @@ PreSense is a Streamlit dashboard for real-time smart-infrastructure risk monito
 
 Built as part of the **Edunet IBM SkillsBuild Internship** program.
 
-## Live Demo
-
-Deployed link: https://pre-sense.streamlit.app/
-
 ## Features
 
 - Live weather lookup by city name using Open-Meteo.
